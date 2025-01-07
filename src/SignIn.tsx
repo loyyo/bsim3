@@ -14,7 +14,10 @@ import { styled } from '@mui/material/styles';
 import ForgotPassword from './ForgotPassword';
 import { GoogleIcon } from './CustomIcons';
 import AppTheme from './AppTheme';
-import {Link as RouterLink} from "react-router";
+import { Link as RouterLink } from 'react-router';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+
+const auth = getAuth();
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -73,18 +76,6 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
     setOpen(false);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    if (emailError || passwordError) {
-      event.preventDefault();
-      return;
-    }
-    const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get('email'),
-      password: data.get('password'),
-    });
-  };
-
   const validateInputs = () => {
     const email = document.getElementById('email') as HTMLInputElement;
     const password = document.getElementById('password') as HTMLInputElement;
@@ -110,6 +101,31 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
     }
 
     return isValid;
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!validateInputs()) {
+      return;
+    }
+
+    const email = (document.getElementById('email') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement).value;
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        setEmailError(true);
+        setEmailErrorMessage('User not found.');
+      } else if (error.code === 'auth/wrong-password') {
+        setPasswordError(true);
+        setPasswordErrorMessage('Incorrect password.');
+      } else {
+        console.error('Error signing in:', error);
+      }
+    }
   };
 
   return (
@@ -162,7 +178,6 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
                 type="password"
                 id="password"
                 autoComplete="current-password"
-                autoFocus
                 required
                 fullWidth
                 variant="outlined"
@@ -170,12 +185,7 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
               />
             </FormControl>
             <ForgotPassword open={open} handleClose={handleClose} />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              onClick={validateInputs}
-            >
+            <Button type="submit" fullWidth variant="contained">
               Sign in
             </Button>
             <Link
@@ -201,13 +211,13 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
             <Typography sx={{ textAlign: 'center' }}>
               Don&apos;t have an account?{' '}
               <Link
-								component={RouterLink}
-  							to="/sign-up"
-								variant="body2"
-								sx={{alignSelf: 'center'}}
-							>
-								Sign up
-							</Link>
+                component={RouterLink}
+                to="/sign-up"
+                variant="body2"
+                sx={{ alignSelf: 'center' }}
+              >
+                Sign up
+              </Link>
             </Typography>
           </Box>
         </Card>

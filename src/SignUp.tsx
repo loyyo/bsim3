@@ -136,6 +136,8 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
 				name,
 				email,
 				createdAt: new Date().toISOString(),
+				consent: gdprConsent,
+				role: user,
 			});
 
 			alert('User successfully created!');
