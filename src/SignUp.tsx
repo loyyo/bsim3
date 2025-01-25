@@ -1,4 +1,4 @@
-import {useState, FormEvent} from 'react';
+import {FormEvent, useState} from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -15,9 +15,8 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import {styled} from '@mui/material/styles';
 import AppTheme from './AppTheme';
-import {GoogleIcon} from './CustomIcons';
-import {getAuth, createUserWithEmailAndPassword} from 'firebase/auth';
-import {getFirestore, doc, setDoc} from 'firebase/firestore';
+import {createUserWithEmailAndPassword, getAuth} from 'firebase/auth';
+import {doc, getFirestore, setDoc} from 'firebase/firestore';
 import {app} from '../firebase';
 
 const auth = getAuth(app);
@@ -232,14 +231,14 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
 						<Typography sx={{color: 'text.secondary'}}>or</Typography>
 					</Divider>
 					<Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-						<Button
-							fullWidth
-							variant="outlined"
-							onClick={() => alert('Sign up with Google')}
-							startIcon={<GoogleIcon/>}
-						>
-							Sign up with Google
-						</Button>
+						{/*<Button*/}
+						{/*	fullWidth*/}
+						{/*	variant="outlined"*/}
+						{/*	onClick={() => alert('Sign up with Google')}*/}
+						{/*	startIcon={<GoogleIcon/>}*/}
+						{/*>*/}
+						{/*	Sign up with Google*/}
+						{/*</Button>*/}
 						<Typography sx={{textAlign: 'center'}}>
 							Already have an account?{' '}
 							<Link
