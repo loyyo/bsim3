@@ -1,6 +1,7 @@
 # Instrukcja
-### 1. npm install
-### 2. npm run dev
+### 1. Wrzucić plik .env do folderu z projektem
+### 2. npm install
+### 3. npm run dev
 
 
 
