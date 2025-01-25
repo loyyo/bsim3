@@ -16,8 +16,12 @@ import AppTheme from './AppTheme';
 import {useAuth} from './AuthContext';
 import {collection, deleteDoc, doc, getDoc, getDocs, getFirestore, updateDoc} from 'firebase/firestore';
 import {MenuItem} from "@mui/material";
+import {useNavigate} from "react-router";
+import {deleteUser, getAuth} from "firebase/auth";
+import {app} from '../firebase';
 
-const db = getFirestore();
+const db = getFirestore(app);
+const auth = getAuth(app);
 
 type User = {
 	id: string;
@@ -81,6 +85,7 @@ const ProfileContainer = styled(Box)(({theme}) => ({
 
 export default function Profile(props: { disableCustomTheme?: boolean }) {
 	const {currentUser, logOut} = useAuth();
+	const navigate = useNavigate();
 	const [name, setName] = useState<string>('');
 	const [description, setDescription] = useState<string>('');
 	const [role, setRole] = useState<string>('user');
@@ -123,23 +128,36 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 		fetchUsers();
 	}, [role]);
 
-	const handleUpdateUser = async (userId: string) => {
-		const updatedData = editValues[userId];
+	const handleUpdateUser = async (userId: string, profileData?: Partial<User>) => {
+		const updatedData = profileData ?? editValues[userId];
 		try {
 			await updateDoc(doc(db, 'users', userId), updatedData);
 			alert('User updated successfully!');
 			setUsers((prevUsers) =>
 				prevUsers.map((user) => (user.id === userId ? {...user, ...updatedData} : user))
 			);
+			if (profileData) {
+				navigate(0);
+			}
 		} catch (error) {
 			console.error('Error updating user:', error);
 			alert('Failed to update user.');
 		}
 	};
 
+
 	const handleDeleteUser = async () => {
 		if (deleteUserId) {
 			try {
+				if (deleteUserId === currentUser?.uid) {
+					const userDoc = await getDoc(doc(db, 'users', deleteUserId));
+					if (userDoc.exists()) {
+						const authUser = auth.currentUser;
+						if (authUser) {
+							await deleteUser(authUser);
+						}
+					}
+				}
 				await deleteDoc(doc(db, 'users', deleteUserId));
 				setUsers((prevUsers) => prevUsers.filter((user) => user.id !== deleteUserId));
 				setDeleteUserId(null);
@@ -183,8 +201,8 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 							onChange={(e) => setDescription(e.target.value)}
 							fullWidth
 						/>
-						<Button variant="contained" color="primary" onClick={() => handleUpdateUser(currentUser?.uid || '')}
-										fullWidth>
+						<Button variant="contained" color="primary"
+										onClick={() => handleUpdateUser(currentUser?.uid || '', {name, description})} fullWidth>
 							Update Profile
 						</Button>
 						<Button variant="contained" color="secondary" onClick={logOut} fullWidth>
@@ -202,11 +220,11 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 				</Card>
 				{role === 'moderator' || role === 'administrator' ? (
 					<Card variant="outlined">
-						<Typography component="h2" variant="h5" sx={{mb: 2}}>
+						<Typography component="h2" variant="h5" sx={{mb: 1}}>
 							User Management
 						</Typography>
 						<ScrollableBox>
-							{users.map((user) => (
+							{users.filter((user) => user.role !== 'administrator').map((user) => (
 								<Box key={user.id} sx={{mb: 2, mr: 2}}>
 									<Divider sx={{mb: 1}}/>
 									<Typography variant="body1">Email: {user.email}</Typography>
@@ -241,7 +259,6 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 												fullWidth
 												sx={{mb: 1}}
 											>
-												<MenuItem value="administrator">Administrator</MenuItem>
 												<MenuItem value="moderator">Moderator</MenuItem>
 												<MenuItem value="user">User</MenuItem>
 											</TextField>
@@ -253,15 +270,6 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 												sx={{mt: 1}}
 											>
 												Edit User
-											</Button>
-											<Button
-												variant="contained"
-												color="error"
-												onClick={() => setDeleteUserId(user.id)}
-												fullWidth
-												sx={{mt: 1}}
-											>
-												Delete User
 											</Button>
 										</Box>
 									)}

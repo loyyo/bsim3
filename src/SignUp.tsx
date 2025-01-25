@@ -134,6 +134,7 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
 			await setDoc(doc(db, 'users', user.uid), {
 				name,
 				email,
+				id: user.uid,
 				createdAt: new Date().toISOString(),
 				consent: gdprConsent,
 				role: "user",

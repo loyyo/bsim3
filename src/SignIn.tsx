@@ -15,8 +15,9 @@ import ForgotPassword from './ForgotPassword';
 import AppTheme from './AppTheme';
 import {Link as RouterLink} from 'react-router';
 import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
+import {app} from '../firebase';
 
-const auth = getAuth();
+const auth = getAuth(app);
 
 const Card = styled(MuiCard)(({theme}) => ({
 	display: 'flex',
