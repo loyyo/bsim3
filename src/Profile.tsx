@@ -17,11 +17,21 @@ import {useAuth} from './AuthContext';
 import {collection, deleteDoc, doc, getDoc, getDocs, getFirestore, updateDoc} from 'firebase/firestore';
 import {MenuItem} from "@mui/material";
 import {useNavigate} from "react-router";
-import {deleteUser, getAuth} from "firebase/auth";
+import {
+	deleteUser,
+	getAuth,
+	PhoneAuthProvider,
+	RecaptchaVerifier,
+	PhoneMultiFactorGenerator,
+	multiFactor,
+} from "firebase/auth";
 import {app} from '../firebase';
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
 
 const db = getFirestore(app);
 const auth = getAuth(app);
+auth.settings.appVerificationDisabledForTesting = true;
 
 type User = {
 	id: string;
@@ -92,6 +102,7 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 	const [users, setUsers] = useState<User[]>([]);
 	const [editValues, setEditValues] = useState<Record<string, User>>({});
 	const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+	const [mfaEnabled, setMfaEnabled] = useState(false);
 
 	useEffect(() => {
 		const fetchUserData = async () => {
@@ -103,6 +114,8 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 					setDescription(userData.description || '');
 					setRole(userData.role || 'user');
 				}
+				const factors = multiFactor(auth.currentUser!).enrolledFactors;
+				setMfaEnabled(factors.length > 0);
 			}
 		};
 
@@ -127,6 +140,77 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 
 		fetchUsers();
 	}, [role]);
+
+	const handleMfaToggle = async () => {
+		if (mfaEnabled) {
+			try {
+				const enrolledFactors = multiFactor(auth.currentUser!).enrolledFactors;
+				if (enrolledFactors.length === 0) {
+					alert('No multi-factor authentication is enabled for this user.');
+					return;
+				}
+				const enrollmentId = enrolledFactors[0].uid; // Assuming a single factor
+				const confirmDisable = window.confirm(
+					`Are you sure you want to disable MFA for the factor: ${enrolledFactors[0].displayName || 'Phone'}?`
+				);
+				if (!confirmDisable) return;
+				await multiFactor(auth.currentUser!).unenroll(enrollmentId);
+				setMfaEnabled(false)
+				alert('MFA has been disabled successfully!');
+			} catch (error) {
+				console.error('Error disabling MFA:', error);
+				alert('Failed to disable MFA. Please try again.');
+			}
+		} else {
+			try {
+				const recaptchaVerifier = new RecaptchaVerifier(
+					auth,
+					'recaptcha-container-id',
+					{
+						size: 'invisible',
+						callback: () => console.log('reCAPTCHA solved successfully'),
+					},
+				);
+
+				const mfaSession = await multiFactor(auth.currentUser!).getSession();
+				const phoneNumber = prompt('Enter your phone number (with country code):');
+				if (!phoneNumber) return;
+
+				const phoneAuthProvider = new PhoneAuthProvider(auth);
+				const verificationId = await phoneAuthProvider.verifyPhoneNumber(
+					{
+						phoneNumber,
+						session: mfaSession,
+					},
+					recaptchaVerifier
+				);
+
+				const verificationCode = prompt('Enter the verification code sent to your phone:');
+				if (!verificationCode) return;
+
+				// Complete MFA enrollment
+				const phoneCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+				const assertion = PhoneMultiFactorGenerator.assertion(phoneCredential);
+				await multiFactor(auth.currentUser!).enroll(assertion, 'Phone');
+
+				alert('MFA enabled successfully!');
+				setMfaEnabled(true);
+			} catch (error: any) {
+				console.error('Error enabling MFA:', error);
+				if (error.code === 'auth/operation-not-allowed') {
+					alert(
+						'Phone Authentication is not enabled in your Firebase project. Please enable it in the Firebase Console.'
+					);
+				} else if (error.code === 'auth/unverified-email') {
+					alert(
+						'Need to verify email first before enrolling second factors.'
+					);
+				} else {
+					alert('Failed to enable MFA. Please try again.');
+				}
+			}
+		}
+	};
 
 	const handleUpdateUser = async (userId: string, profileData?: Partial<User>) => {
 		const updatedData = profileData ?? editValues[userId];
@@ -200,6 +284,16 @@ export default function Profile(props: { disableCustomTheme?: boolean }) {
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							fullWidth
+						/>
+						<FormControlLabel
+							control={
+								<Checkbox
+									checked={mfaEnabled}
+									onChange={handleMfaToggle}
+									color="primary"
+								/>
+							}
+							label="Enable Multi-Factor Authentication (MFA)"
 						/>
 						<Button variant="contained" color="primary"
 										onClick={() => handleUpdateUser(currentUser?.uid || '', {name, description})} fullWidth>

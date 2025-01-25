@@ -14,8 +14,16 @@ import {styled} from '@mui/material/styles';
 import ForgotPassword from './ForgotPassword';
 import AppTheme from './AppTheme';
 import {Link as RouterLink} from 'react-router';
-import {getAuth, signInWithEmailAndPassword} from 'firebase/auth';
+import {
+	getAuth,
+	signInWithEmailAndPassword,
+	getMultiFactorResolver,
+	PhoneAuthProvider,
+	RecaptchaVerifier,
+	PhoneMultiFactorGenerator,
+} from 'firebase/auth';
 import {app} from '../firebase';
+
 
 const auth = getAuth(app);
 
@@ -116,11 +124,38 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
 		try {
 			await signInWithEmailAndPassword(auth, email, password);
 		} catch (error: any) {
-			if (error.code === 'auth/user-not-found') {
+			if (error.code === 'auth/multi-factor-auth-required') {
+				const resolver = getMultiFactorResolver(auth, error);
+				const recaptchaVerifier = new RecaptchaVerifier(
+					auth,
+					'recaptcha-container-id',
+					{
+						size: 'invisible',
+						callback: () => console.log('reCAPTCHA solved'),
+					},
+				);
+
+				// Send SMS code
+				const phoneInfoOptions = {
+					multiFactorHint: resolver.hints[0],
+					session: resolver.session,
+				};
+				const phoneAuthProvider = new PhoneAuthProvider(auth);
+				const verificationId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, recaptchaVerifier);
+
+				// Ask the user for the verification code
+				const verificationCode = prompt('Enter the verification code sent to your phone:');
+				if (!verificationCode) return;
+
+				// Complete the sign-in
+				const phoneCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+				const assertion = PhoneMultiFactorGenerator.assertion(phoneCredential);
+				await resolver.resolveSignIn(assertion);
+
+				alert('Successfully signed in with multi-factor authentication!');
+			} else if (error.code === 'auth/user-not-found') {
 				alert('Error: Incorrect email or password.');
 			} else if (error.code === 'auth/wrong-password') {
-				alert('Error: Incorrect email or password.');
-			} else if (error.code === 'auth/invalid-credential') {
 				alert('Error: Incorrect email or password.');
 			} else {
 				console.error('Error signing in:', error);

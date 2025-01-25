@@ -15,7 +15,7 @@ import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import {styled} from '@mui/material/styles';
 import AppTheme from './AppTheme';
-import {createUserWithEmailAndPassword, getAuth} from 'firebase/auth';
+import {createUserWithEmailAndPassword, getAuth, sendEmailVerification} from 'firebase/auth';
 import {doc, getFirestore, setDoc} from 'firebase/firestore';
 import {app} from '../firebase';
 
@@ -141,7 +141,9 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
 				description: "Empty description"
 			});
 
-			alert('User successfully created!');
+			await sendEmailVerification(user);
+
+			alert('User successfully created! Please verify your email.');
 		} catch (error: any) {
 			console.error('Error creating user:', error.message);
 			alert(error.message);
