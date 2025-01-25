@@ -116,13 +116,14 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
 			await signInWithEmailAndPassword(auth, email, password);
 		} catch (error: any) {
 			if (error.code === 'auth/user-not-found') {
-				setEmailError(true);
-				setEmailErrorMessage('User not found.');
+				alert('Error: Incorrect email or password.');
 			} else if (error.code === 'auth/wrong-password') {
-				setPasswordError(true);
-				setPasswordErrorMessage('Incorrect password.');
+				alert('Error: Incorrect email or password.');
+			} else if (error.code === 'auth/invalid-credential') {
+				alert('Error: Incorrect email or password.');
 			} else {
 				console.error('Error signing in:', error);
+				alert('An unexpected error occurred. Please try again later.');
 			}
 		}
 	};
@@ -201,14 +202,6 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
 						<Typography sx={{color: 'text.secondary'}}>or</Typography>
 					</Divider>
 					<Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-						{/*<Button*/}
-						{/*  fullWidth*/}
-						{/*  variant="outlined"*/}
-						{/*  onClick={() => alert('Sign in with Google')}*/}
-						{/*  startIcon={<GoogleIcon />}*/}
-						{/*>*/}
-						{/*  Sign in with Google*/}
-						{/*</Button>*/}
 						<Typography sx={{textAlign: 'center'}}>
 							Don&apos;t have an account?{' '}
 							<Link
